@@ -135,6 +135,87 @@ app.post('/api/users/:_id/exercises', function (req, res) {
     });
 });
 
+app.get('/api/users/:_id/logs', function (req, res) {
+  const userId = req.params._id;
+  const from = req.query.from;
+  const to = req.query.to;
+  const limit = req.query.limit;
+  Logger.info('Server.Get.Logs.started', {
+    userId,
+    from,
+    to,
+    limit,
+  });
+
+  User.findById(userId)
+    .exec()
+    .then((user) => {
+      if (!user) {
+        Logger.info('Server.Get.Logs.userNotFound', {
+          userId,
+        });
+        res.status(404).json({ error: 'User Not Found!' });
+        return;
+      }
+
+      let searchObject = {
+        user: user._id,
+      };
+
+      if (from) {
+        searchObject = {
+          ...searchObject,
+          date: {
+            $gte: new Date(from),
+          },
+        };
+      }
+
+      if (to) {
+        searchObject = {
+          ...searchObject,
+          date: {
+            $lte: new Date(to),
+          },
+        };
+      }
+
+      let logsQuery = Exercise.find(searchObject);
+
+      if (limit) {
+        logsQuery = logsQuery.limit(limit);
+      }
+
+      logsQuery
+        .exec()
+        .then((exercises) => {
+          Logger.info('Server.Get.Logs.success', {
+            exercises,
+          });
+          res.json({
+            _id: user.id,
+            username: user.username,
+            count: exercises.length,
+            log: exercises.map((exercise) => {
+              return {
+                description: exercise.description,
+                duration: exercise.duration,
+                date: exercise.date.toDateString(),
+              };
+            }),
+          });
+        })
+        .catch((error) => {
+          Logger.error('Server.Get.Logs.failed', error);
+          res.status(500).json({ error: 'Internal Server Error' });
+        });
+    })
+    .catch((error) => {
+      Logger.error('Server.Get.Logs.failed', error);
+      res.status(500).json({ error: 'Internal Server Error' });
+    });
+});
+
 // listen for requests :)
 var listener = app.listen(process.env.PORT, function () {
   Logger.info('Server', `Your app is listening on port ${listener.address().port}`);
