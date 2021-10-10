@@ -182,8 +182,8 @@ app.get('/api/users/:_id/logs', function (req, res) {
 
       let logsQuery = Exercise.find(searchObject);
 
-      if (limit) {
-        logsQuery = logsQuery.limit(limit);
+      if (limit && !Number.isNaN(Number(limit))) {
+        logsQuery = logsQuery.limit(Number(limit));
       }
 
       logsQuery
