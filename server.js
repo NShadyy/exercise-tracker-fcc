@@ -6,8 +6,9 @@ const rTracer = require('cls-rtracer');
 const { ApiLoggerMiddleware, Logger } = require('./logger');
 const cors = require('cors');
 const { urlencoded } = require('body-parser');
-const { connectToDb } = require('./db/utils/connect.util');
-const { User } = require('./db/models/user.model');
+const { connectToDb } = require('./db/db.util');
+const { User, Exercise } = require('./db/db.model');
+const { ObjectID } = require('mongodb');
 
 require('dotenv').config();
 
@@ -60,6 +61,75 @@ app.post('/api/users', function (req, res) {
     })
     .catch((error) => {
       Logger.error('Server.Post.Users.failed', error);
+      res.status(500).json({ error: 'Internal Server Error' });
+    });
+});
+
+app.get('/api/users', function (req, res) {
+  Logger.info('Server.Get.Users.started');
+
+  User.find({})
+    .exec()
+    .then((usersList) => {
+      Logger.info('Server.Get.Users.success', {
+        noOfUsers: usersList.length,
+      });
+      res.json(usersList);
+    })
+    .catch((error) => {
+      Logger.error('Server.Get.Users.failed', error);
+      res.status(500).json({ error: 'Internal Server Error' });
+    });
+});
+
+app.post('/api/users/:_id/exercises', function (req, res) {
+  const userId = req.params._id;
+  const description = req.body.description;
+  const duration = req.body.duration;
+  const date = req.body.date;
+  Logger.info('Server.Post.Exercises.started', {
+    userId,
+    description,
+    duration,
+    date,
+  });
+
+  User.findById(userId)
+    .exec()
+    .then((user) => {
+      if (!user) {
+        Logger.info('Server.Post.Exercises.userNotFound', {
+          userId,
+        });
+        res.status(404).json({ error: 'User Not Found!' });
+        return;
+      }
+
+      Exercise.create({
+        description,
+        duration,
+        date: new Date(date),
+        user: user._id,
+      })
+        .then((newExercise) => {
+          Logger.info('Server.Post.Exercises.success', {
+            newExercise,
+          });
+          res.json({
+            username: user.username,
+            description: newExercise.description,
+            duration: newExercise.duration,
+            date: newExercise.date.toDateString(),
+            _id: newExercise._id,
+          });
+        })
+        .catch((error) => {
+          Logger.error('Server.Post.Exercises.failed', error);
+          res.status(500).json({ error: 'Internal Server Error' });
+        });
+    })
+    .catch((error) => {
+      Logger.error('Server.Post.Exercises.failed', error);
       res.status(500).json({ error: 'Internal Server Error' });
     });
 });
