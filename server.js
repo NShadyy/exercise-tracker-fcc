@@ -69,6 +69,7 @@ app.get('/api/users', function (req, res) {
   Logger.info('Server.Get.Users.started');
 
   User.find({})
+    .select('_id username')
     .exec()
     .then((usersList) => {
       Logger.info('Server.Get.Users.success', {
@@ -108,7 +109,7 @@ app.post('/api/users/:_id/exercises', function (req, res) {
       Exercise.create({
         description,
         duration,
-        date: new Date(date),
+        date: date ? new Date(date) : new Date(),
         user: user._id,
       })
         .then((newExercise) => {
@@ -120,7 +121,7 @@ app.post('/api/users/:_id/exercises', function (req, res) {
             description: newExercise.description,
             duration: newExercise.duration,
             date: newExercise.date.toDateString(),
-            _id: newExercise._id,
+            _id: user.id,
           });
         })
         .catch((error) => {
